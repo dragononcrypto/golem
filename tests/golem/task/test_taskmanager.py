@@ -1,13 +1,14 @@
-from golem_messages.message import ComputeTaskDef
 import os
 import random
 import shutil
 import time
 import uuid
 from collections import OrderedDict
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 from pydispatch import dispatcher
+
+from golem_messages.message import ComputeTaskDef
 
 from apps.core.task.coretaskstate import TaskDefinition
 from apps.blender.task.blenderrendertask import BlenderRenderTask
@@ -900,6 +901,19 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         tm.tasks['test_id'].get_subtasks.return_value = None
         tm.restart_frame_subtasks('test_id', 1)
         assert not tm.notice_task_updated.called
+
+        task_mock = Mock()
+        task_mock.get_subtasks.return_value = {'a': 1, 'b': 2, 'c': 3}
+        tm.tasks['test_id2'] = task_mock
+        mock_state = MagicMock()
+        mock_state.subtask_states = {
+            'a': Mock(subtask_status=SubtaskStatus.finished),
+            'b': Mock(subtask_status=SubtaskStatus.restarted),
+            'c': Mock(subtask_status=SubtaskStatus.finished)}
+        tm.tasks_states['test_id2'] = mock_state
+        assert tm.restart_frame_subtasks('test_id2', 1) == 2
+        tm.tasks.pop('test_id2')
+        tm.tasks_states.pop('test_id2')
 
         # Create tasks
         tm.tasks.pop('test_id')
